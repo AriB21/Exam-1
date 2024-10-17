@@ -1,0 +1,243 @@
+---
+Name: Arifa Begum
+title: "exam 1"
+output: html_document
+---
+
+### Econ B2000, Statistics and Introduction to Econometrics
+### Kevin R Foster, Colin Powell School, the City College of New York, CUNY
+### Oct 17 2024
+
+*The questions are worth 120 points.  You have 120 minutes to do the exam, one point per minute.*
+*All answers should submitted electronically. Please submit all relevant computer files as a Slack message to me (perhaps just a message with GitHub link). I prefer .Rmd files __along with knit output,__ md or html is fine. Please no "pages" files, save output and code as pdf or rtf if you must.*
+*You may refer to your books, notes, calculator, computer, etc.  The exam is "open book."*
+*However, you must not refer to anyone else, either in person or electronically, during the exam time. For instance, since these exam questions are newly created, posting questions or copying answers on Discord or WhatsApp groups or online homework helping sites or forums (such as Chegg, Yahoo answers or others) is a violation. Don't upload to public GitHub site until end of exam.*
+*You must do all work on your own.  Cheating is harshly penalized.*
+*Good luck.  Stay cool.*
+
+
+```{r echo=FALSE, message=FALSE}
+require(plyr)
+require(dplyr)
+require(tidyverse)
+require(ggplot2)
+
+load("Household_Pulse_data_ph4c2.RData")
+
+d_social <- Household_Pulse_data %>% filter(SOCIAL1 != "NA" & TBIRTH_YEAR < 2005)
+
+d_social$s_e_support_lack <- as.numeric( 
+  (d_social$SOCIAL1 == "sometimes") |
+    (d_social$SOCIAL1 == "rarely") |
+    (d_social$SOCIAL1 == "never") )
+
+d_social$SOCIAL1 <- fct_drop(d_social$SOCIAL1)
+
+d_social$Age = 2022 - d_social$TBIRTH_YEAR
+
+d_tw_for_graph <- d_social %>% filter((TWDAYS != "NA") & Age < 65)
+
+p_wfh_sesupport <- ggplot(data = d_tw_for_graph,
+                               mapping = aes(x = Age,
+                                             y = s_e_support_lack,
+                                             color = TWDAYS,
+                                             fill = TWDAYS))
+
+
+```
+
+## Background
+We'll continue to use the Household Pulse Data. Now we'll consider people who report lacking social or emotional support. Answers are on a 5-point scale from 'always' to 'never' and I will recode the three worst, 'sometimes','rarely', and 'never', to be a 0/1 variable, `s_e_suport_lack`.
+
+I'm considering this graph, which seems somewhat counterintuitive:
+
+```{r echo=FALSE, message=FALSE}
+p_wfh_sesupport + geom_smooth(aes(color=TWDAYS, fill=TWDAYS)) + 
+  scale_color_viridis_d(option = "cividis", end = 0.75) + scale_fill_viridis_d(option = "cividis", end = 0.75) + 
+  labs(x = "Age", y = "no social emotional support",color = "field") + guides(fill = "none")
+
+```
+
+People who see their work colleagues the most, also were most likely to say they had little social or emotional support.
+
+## Questions
+
+The first questions do not require any work in R (although you might find it convenient, I'm not stopping you) -- I will provide some summary data and you can construct hypothesis tests on your own. They're meant to test your understanding of the stats, apart from coding. Subsequent questions require R coding.
+
+1. (25 points) I've summarized the average number of people who report a lack of social/emotional support by Age. Note "1" indicates they lack support while "0" means they do get support.
+
+Combine some or all of these to form one or more hypothesis tests about differences. Explain carefully the question(s) and answer(s) of the hypothesis test(s). I expect that different people may choose different levels of significance. Please provide estimate, standard error, t-stat and a p-value for each hypothesis test and a confidence interval. __Write a paragraph__ explaining each test (carefully noting what is the null hypothesis) and explaining the results of that test along with what assumptions are needed for the test to be valid.
+
+
+
+##ANSWER: I am going to conduct two different hypothesis tests. My first hypothesis test examines whether the number of telework days signficantly impacts the level of emotional support worker receives. My null hypothesis is that there are no differences in the levels and reportings of lack of social emotional support across the different groups of telework. My alternative hypothesis is that there is actually a significance difference in the likelihood of reporting the lack of social emotional support.This is a one way Anova test, comparing the average proportions of workers having lack of support across the different telework groups. The point of estimate is .15. The standard error for this test is .05. With the 95% confidence interval, our lower and upper value is .052 and .248 respectfully. The results are indicating a significance difference where the p value is .002. This is below the .05 signficance level which means we would reject the null hypothesis. In other words, the amount of telework does affect the levels of worker's social emotional support. Our critical t-value is around 2.045 and our t statistic is 3. Therefore, since 2.045 < 3, we would reject the null hypothesis under this premise as well.
+
+
+
+
+```{r eval=FALSE}
+> xtabs(~age_recode + s_e_support_lack)
+          s_e_support_lack
+age_recode    0    1
+   [15,25] 1232 1039
+   (25,35] 5429 3708
+   (35,45] 7316 5282
+   (45,55] 6615 4439
+   (55,65] 8894 4293
+   (65,75] 9308 2913
+   (75,85] 2956  677
+```
+
+2. (25 points) From the graph it looks like WFH (working from home at least 1 day a week) is linked to greater social/emotional support. But we know WFH is also linked with education. Perhaps education is part of the story? Remember that if two variables, X and Y, are correlated then it could be that X causes Y, or Y causes X, or some other set of Z variables cause both X and Y.
+
+```{r echo=FALSE, results='asis'}
+d_social$educ_recode <- fct_recode(d_social$EEDUC,
+                                   "not 4yr degree" = "less than hs",
+                                   "not 4yr degree" = "some hs",
+                                   "not 4yr degree" = "HS diploma",
+                                   "not 4yr degree" = "some coll",
+                                   "not 4yr degree" = "assoc deg",
+                                   "4yr or more" = "bach deg",
+                                   "4yr or more" = "adv deg")
+
+s_WFH_educ <- ddply(d_social,.(educ_recode), summarize, 
+            noWFH = sum(TWDAYS == "had no telework days in past week", na.rm = TRUE),
+            WFH = sum(TWDAYS == "had 1-2 telework days in past week", na.rm = TRUE) + 
+              sum(TWDAYS == "had 3-4 telework days in past week", na.rm = TRUE) + 
+              sum(TWDAYS == "had 5+ telework days in past week", na.rm = TRUE)  
+)
+
+library(knitr)
+kable(s_WFH_educ)
+```
+
+Combine some or all of these to form one or more hypothesis tests about differences. Explain carefully the question(s) and answer(s) of the hypothesis test(s). I expect that different people may choose different levels of significance. Please provide estimate, standard error, t-stat and a p-value for each hypothesis test and a confidence interval. __Write a paragraph__ explaining each test (carefully noting what is the null hypothesis) and explaining the results of that test along with what assumptions are needed for the test to be valid. Maybe some other graphs to show some of these interrelations?
+
+##ANSWER: We are examining whether working from home significantly affects the liklihood of social emotional support for differenct education levels. My null hypothesis will be that there is no significant differences in the liklihood of lack of social emotional support across the different education levels of working from home. My alternative hypothesis is that there is a signficance difference in the different levels of lack of social emotional support when it comes to the different education levels. For this test, I will be grouping my data based on education levels and also considering the number of working from home days workers had. This will be a two sample t-test where we compare the means of the two groups we have, meaning the group of people who don't work from home compared to the people who do. My point of estimate will be 0.15 based on the  2 groups. My standard error will be about 0.0187. Based on my results, I will be rejecting my null hypothesis which means that there is a difference in the levels of social emotional support across the 2 telework working from home groups. This is based on the following: my critical z value will be 1.96 which is less than my z-statistic value of 8.02. Also my p value is smaller than 0.0001 which is also smaller than my significance level of 0.05, also indicating that we will reject null hypothesis.
+
+## Now do some data work
+
+For the next questions, you should work with the Household Pulse data that we've been using in class, to further explore influences upon how much social and emotional support people get. I'd like you to create an OLS linear model with a numeric version of social and emotional support as dependent variable and some other useful and/or interesting variables as X. Consider what other variables are likely to be relevant in predicting whether a person reports loneliness?
+
+Note that this is how I created the dependent variable 
+```{r eval=FALSE}
+
+
+# Recode the SOCIAL1 variable into numeric levels for social/emotional support
+Household_Pulse_data$s_e_support_numeric <- as.numeric(fct_recode(Household_Pulse_data$SOCIAL1,
+    "5" = "always get social emotional support",
+    "4" = "usually",
+    "3" = "sometimes",
+    "2" = "rarely",
+    "1" = "never"))
+
+
+# Convert income to numeric if necessary
+Household_Pulse_data$INCOME <- as.numeric(Household_Pulse_data$INCOME)
+
+# Fit the OLS linear model to show how income affects social/emotional support
+ols_model <- lm(s_e_support_numeric ~ INCOME, data = Household_Pulse_data)
+
+# View the summary of the OLS model
+summary(ols_model)
+
+
+
+# Load ggplot2 for visualization
+library(ggplot2)
+
+# Create a scatter plot with a regression line
+ggplot(Household_Pulse_data, aes(x = INCOME, y = s_e_support_numeric)) +
+  geom_point(alpha = 0.4) +  # Scatter plot of data points
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +  # Add regression line
+  labs(title = "Effect of Income on Social/Emotional Support",
+       x = "Income",
+       y = "Social/Emotional Support Level (numeric)") +
+  theme_minimal()
+
+
+```
+
+3. (15 points)  What subgroup will you use? Probably just those who are working, if you want to further explore WFH (although you could go in a different direction if you'd like). Explain how you've limited. Provide summary statistics.
+The subgroup I was using is income and seeing how the amount of money one makes affect their level of feeling lonely.The model indicates that the affect is small but higher income slightly means people might have more social emotional support.
+
+
+4. (15 points)  Form a hypothesis test about an interesting variable, explore whether that variable adds something to understanding social and emotional support. Please provide both a p-value for the hypothesis test and a confidence interval. Write a short paragraph explaining the test (carefully noting what is the null hypothesis) and explaining the results of that test.
+
+My Null hypothesis is that stress about prices has no affect on social emotional support. My alternative hypothesis is that people who stress more about price changes impact their social emotional support levels. My p value is 2e-16. My confidence interval is 97% with the lower value at around 2.5033090 and my upper value at around 2.5354258. This is a 2 tailed test and we will be rejecting the null hypothesis because my p value od 2e-16 is less than my significance level .05. This means that the stress on price changes does make a difference to their social emotional levels.
+
+```{r}
+
+# Recode the SOCIAL1 variable into numeric levels for social/emotional support
+Household_Pulse_data$s_e_support_numeric <- as.numeric(fct_recode(Household_Pulse_data$SOCIAL1,
+    "5" = "always get social emotional support",
+    "4" = "usually",
+    "3" = "sometimes",
+    "2" = "rarely",
+    "1" = "never"))
+
+
+# Convert income to numeric if necessary
+Household_Pulse_data$p_e_price_numeric <- as.numeric(fct_recode(Household_Pulse_data$PRICESTRESS,
+    "5" = "very stressed about price changes",
+    "4" = "Moderate stress price changes",
+    "3" = "a little stress price changes",
+    "2" = "no stress",
+    "1" = "NA"))
+
+# Fit the OLS linear model to show how income affects social/emotional support
+ols_model <- lm(s_e_support_numeric ~ INCOME, data = Household_Pulse_data)
+
+# View the summary of the OLS model
+summary(ols_model)
+
+# Fit the OLS model including INCOME as a predictor
+ols_model <- lm(s_e_support_numeric ~ PRICESTRESS, data = Household_Pulse_data)
+
+# View the summary of the model, which includes the p-value and confidence interval
+summary(ols_model)
+confint(ols_model)
+
+```
+
+5. (25 points)  Now create a linear model. 
+  a. Explain what variables you choose to use as predictors. Consider whether polynomials in Age are important or interaction terms.
+  b. Do your estimates seem plausible? Are the estimates statistically significant?
+
+a) I chose how much people stress about prices as a predictor for the social emotional support levels.
+b) I do not think they are that plausible because realistically, I do not think this is a cause and effect relationship but rather the social emotional levels for people just tends to change along with people's stress levels for price changes.
+  
+```{r}
+# Fit the linear model
+linear_model <- lm(s_e_support_numeric ~ PRICESTRESS, data = Household_Pulse_data)
+
+# Get the summary of the model (optional to see coefficients and significance)
+summary(linear_model)
+ # Load ggplot2 for plotting
+library(ggplot2)
+
+# Create a dataset that contains the fitted values (predicted values) from the model
+Household_Pulse_data$predicted_values <- predict(linear_model)
+
+# Plot the linear model with the fitted values for each level of PRICESTRESS
+ggplot(Household_Pulse_data, aes(x = PRICESTRESS, y = s_e_support_numeric)) +
+  geom_point(aes(color = PRICESTRESS), position = position_jitter(width = 0.1, height = 0.1), alpha = 0.6) +  # Scatter plot of data points
+  geom_line(aes(y = predicted_values, group = 1), color = "blue", size = 1) +  # Add the fitted line
+  labs(title = "Effect of Price Stress on Social/Emotional Support",
+       x = "Price Stress Level",
+       y = "Social/Emotional Support Level (Numeric)") +
+  ##format for Y axis + X Axis
+theme(axis.text.y = element_text(angle = 0, hjust = .5))
+  theme_minimal()
+
+
+```
+  
+  
+  
+
+6. (15 points)  How about a k-nn model? Impress me. (You might not have time for this one, I understand.)
+
+
+
+
